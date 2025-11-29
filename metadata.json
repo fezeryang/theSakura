@@ -1,0 +1,7 @@
+{
+  "name": "Particle Sakura",
+  "description": "An immersive 3D experience featuring a procedural particle cherry blossom tree that dissolves into a floating gallery of memories.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
