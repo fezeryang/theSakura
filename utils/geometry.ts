@@ -10,12 +10,23 @@ class ParticleBuffer {
   targetPositions: number[] = [];
   colors: number[] = [];
   sizes: number[] = [];
+  drifts: number[] = [];
+  phases: number[] = [];
 
-  add(pos: THREE.Vector3, targetPos: THREE.Vector3, color: THREE.Color, size: number) {
+  add(
+    pos: THREE.Vector3,
+    targetPos: THREE.Vector3,
+    color: THREE.Color,
+    size: number,
+    drift: THREE.Vector3,
+    phase: number
+  ) {
     this.positions.push(pos.x, pos.y, pos.z);
     this.targetPositions.push(targetPos.x, targetPos.y, targetPos.z);
     this.colors.push(color.r, color.g, color.b);
     this.sizes.push(size);
+    this.drifts.push(drift.x, drift.y, drift.z);
+    this.phases.push(phase);
   }
 
   toData(): ParticleData {
@@ -24,6 +35,8 @@ class ParticleBuffer {
       targetPositions: new Float32Array(this.targetPositions),
       colors: new Float32Array(this.colors),
       sizes: new Float32Array(this.sizes),
+      drifts: new Float32Array(this.drifts),
+      phases: new Float32Array(this.phases),
     };
   }
 }
@@ -109,10 +122,12 @@ export const generateTree = ({ depth, branchLength, startPos }: TreeGenParams): 
       // Wood particles: Overlap significantly for solid look
       const sizeBase = isTrunk ? 5.0 : 3.0;
       woodBuffer.add(
-        pos, 
-        getRandomSpacePos(), 
-        woodColor, 
-        randomRange(sizeBase * 0.9, sizeBase * 1.5) 
+        pos,
+        getRandomSpacePos(),
+        woodColor,
+        randomRange(sizeBase * 0.9, sizeBase * 1.5),
+        new THREE.Vector3(randomRange(-0.05, 0.05), randomRange(-0.02, 0.02), randomRange(-0.05, 0.05)),
+        Math.random() * Math.PI * 2
       );
     }
 
@@ -221,11 +236,19 @@ export const generateTree = ({ depth, branchLength, startPos }: TreeGenParams): 
             const sizeBase = 6.0;
             const sizeVar = (1.2 - rRaw) * sizeBase + randomRange(0, 3.0);
 
+            const drift = new THREE.Vector3(
+              randomRange(-0.8, 0.8),
+              randomRange(0.2, 1.6),
+              randomRange(-0.8, 0.8)
+            );
+
             blossomBuffer.add(
-              p, 
-              getRandomSpacePos(), 
-              color, 
-              sizeVar
+              p,
+              getRandomSpacePos(),
+              color,
+              sizeVar,
+              drift,
+              Math.random() * Math.PI * 2
             );
           }
       }

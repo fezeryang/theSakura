@@ -5,6 +5,8 @@ export interface ParticleData {
   targetPositions: Float32Array;
   colors: Float32Array;
   sizes: Float32Array;
+  drifts: Float32Array;
+  phases: Float32Array;
 }
 
 export interface TreeData {
