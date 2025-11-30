@@ -14,6 +14,10 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState("Initializing...");
+  const smoothedPos = useRef({ x: 0.5, y: 0.5 });
+  const stableGesture = useRef("NONE");
+  const pendingGesture = useRef("NONE");
+  const gestureFrames = useRef(0);
 
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -94,18 +98,30 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate }) => {
           if (pinkyUp) count++;
 
           // --- GESTURE MAPPING ---
-          let gesture = "UNKNOWN";
+          let rawGesture = "UNKNOWN";
 
           if (count === 0) {
-            gesture = "FIST"; // REFORM TREE
+            rawGesture = "FIST"; // REFORM TREE
           } else if (count === 5) {
-            gesture = "OPEN_HAND"; // DISPERSE GALAXY
+            rawGesture = "OPEN_HAND"; // DISPERSE GALAXY
           } else if (count === 1 && indexUp) {
-            gesture = "ONE_FINGER"; // CYCLE COLORS
+            rawGesture = "ONE_FINGER"; // CYCLE COLORS
           } else if (count === 2 && indexUp && middleUp) {
-            gesture = "TWO_FINGERS"; // REVEAL PHOTOS
+            rawGesture = "TWO_FINGERS"; // REVEAL PHOTOS
           } else {
-            gesture = `COUNT_${count}`;
+            rawGesture = `COUNT_${count}`;
+          }
+
+          // Gesture smoothing: require two consecutive frames before switching
+          if (rawGesture === pendingGesture.current) {
+            gestureFrames.current += 1;
+          } else {
+            pendingGesture.current = rawGesture;
+            gestureFrames.current = 1;
+          }
+
+          if (gestureFrames.current >= 2) {
+            stableGesture.current = pendingGesture.current;
           }
 
           // --- CAMERA CONTROL INPUT ---
@@ -113,14 +129,20 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate }) => {
           // Invert X because of mirroring (Screen Left = Hand Left)
           const normalizedPos = { x: 1.0 - landmarks[9].x, y: landmarks[9].y };
 
+          // Low-pass filter hand position for steadier camera control
+          smoothedPos.current = {
+            x: smoothedPos.current.x + (normalizedPos.x - smoothedPos.current.x) * 0.25,
+            y: smoothedPos.current.y + (normalizedPos.y - smoothedPos.current.y) * 0.25,
+          };
+
           onUpdate({
             fingerCount: count,
-            gesture,
-            position: normalizedPos,
+            gesture: stableGesture.current,
+            position: smoothedPos.current,
             isTracking: true
           });
-          
-          setStatus(`Tracking: ${gesture}`);
+
+          setStatus(`Tracking: ${stableGesture.current}`);
         } else {
           onUpdate({
             fingerCount: 0,

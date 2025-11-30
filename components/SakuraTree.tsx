@@ -25,6 +25,8 @@ const SakuraShaderMaterial = {
     attribute float aSize;
     attribute vec3 color;
     attribute float aRotation;
+    attribute vec3 aDrift;
+    attribute float aPhase;
     
     varying vec3 vColor;
     varying float vAlpha;
@@ -59,13 +61,22 @@ const SakuraShaderMaterial = {
       // 2. Position/Expansion Logic
       float t = easeInOutCubic(uExpansion);
       vec3 pos = mix(position, aTargetPos, t);
-      
+
+      float time = uTime + aPhase;
+
       // Turbulence / Wind
       if (uExpansion < 0.5) {
           // Tree State: Gentle Sway
-          float wind = sin(uTime * 1.5 + pos.y * 0.05) * 0.3 * (pos.y * 0.01 + 1.0);
-          pos.x += wind;
-          pos.z += cos(uTime * 1.2 + pos.x * 0.05) * 0.2;
+          float wind = sin(time * 1.2 + pos.y * 0.04) * 0.35 * (pos.y * 0.01 + 1.0);
+          pos.x += wind + aDrift.x * 0.35;
+          pos.z += cos(time * 1.1 + pos.x * 0.04) * 0.25 + aDrift.z * 0.35;
+
+          // Petal float: subtle flutter and slow downward glide
+          if (uIsWood < 0.5) {
+              float flutter = sin(time * 2.5) * 0.6;
+              pos.y += flutter * 0.4;
+              pos.y -= (1.0 - t) * 0.12; // Gravity pull toward branches
+          }
       } else {
           // Galaxy State: Orbit
           float orbitSpeed = 0.2;
@@ -73,9 +84,10 @@ const SakuraShaderMaterial = {
           float theta = atan(pos.z, pos.x) + uTime * orbitSpeed * (100.0 / (r + 10.0));
           pos.x = r * cos(theta);
           pos.z = r * sin(theta);
-          
+
           // Bobbing
-          pos.y += sin(uTime + pos.x) * 0.5;
+          pos.y += sin(time + pos.x) * 0.6;
+          pos += aDrift * 0.65; // Let petals loft outward with individual drift
           vRotation += uTime;
       }
 
@@ -147,6 +159,8 @@ const SakuraTree: React.FC<SakuraTreeProps> = ({ data, mode, expansionRef, hueRe
     geo.setAttribute('aTargetPos', new THREE.BufferAttribute(data.targetPositions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
     geo.setAttribute('aSize', new THREE.BufferAttribute(data.sizes, 1));
+    geo.setAttribute('aDrift', new THREE.BufferAttribute(data.drifts, 3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(data.phases, 1));
     const count = data.positions.length / 3;
     const rotations = new Float32Array(count);
     for(let i=0; i<count; i++) rotations[i] = Math.random() * Math.PI * 2;
